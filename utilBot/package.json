@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "discord.js": "^14.6.0",
+    "tone": "^14.7.77",
+    "tonegenerator": "^0.3.2",
+    "waveheader": "^0.0.2"
+  }
+}
