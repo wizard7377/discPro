@@ -1,3 +1,34 @@
+/*
+ 
+NAME: blackJackBot
+
+MAIN DEPS: discord.js,mongodb
+ 
+MAIN JSON/BSON:
+
+{
+	gId: String
+	dCash: Int
+	uInfo: [
+		{ uId: String, uCash: Int }
+	]
+}
+
+TO-DO (only stuff I'll forget):
+
+allow user to block bot
+TABLE uPref IS SET UP
+
+ 
+*/
+
+
+//YO ASSEMBLY STYLE RN
+
+
+
+
+
 const { Client, GatewayIntentBits } = require('discord.js');
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const config = require('./config.json');
@@ -8,6 +39,8 @@ const uri = config.MDBURI;
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 });
+
+
 
 
 
@@ -111,8 +144,9 @@ async function setUserCash(userId,guildId,valCash) {
 		await gUserPrep(userId,guildId);
 		const filter = {gId:guildId,"uInfo.uId":userId};
 		await guildData.updateOne(filter,
-			{ $set: { "uInfo.uCash":valCash}}
+			{ $set: { "uInfo.$.uCash":valCash}}
 		);
+
 	} catch (err) {
 		console.error(err);
 	} finally {
@@ -160,6 +194,12 @@ botCommands.set('viewbalance', (
 botCommands.set('uset', (
 	
 	async function(interaction) {
+
+		let args = [interaction.options.getUser('uname'),interaction.guildId,interaction.options.getInteger('acash')];
+		await setUserCash(args[0].id,args[1],args[2]);
+		client.users.send(args[0].id,
+			'Hello, ' + args[0].username + ', your cash has been set to $' + args[2] + " in guild " + interaction.guild.name);
+		await interaction.reply('set cash');
 
 
 
