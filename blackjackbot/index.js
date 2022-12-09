@@ -4,10 +4,12 @@ const config = require('./config.json');
 const fs = require('fs');
 const { MongoClient } = require('mongodb');
 
-const uri = "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+1.6.0";
+const uri = config.MDBURI;
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 });
+
+
 
 const dClient = new MongoClient(uri);
 
