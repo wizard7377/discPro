@@ -47,7 +47,10 @@ function shuffle(array) {
 	}
 	return array;
 }
-  
+
+const cardName = ['A','2','3','4','5','6','7','8','9','T','J','Q','K'];
+const suitSym = ['♠️','♣️','♥️','♦️'];
+const cardBack = '🃏';
 function sumHand(array) {
 	let total = [0];
 	for (let card of array) {
@@ -220,8 +223,8 @@ const userPlays = new Map();
 class userHand {
 	constructor(userBet) {
 		this.userDeck = shuffle(fullDeck);
-		this.dealCards = [userDeck[0],userDeck[1]];
-		this.userHand = [{cards:[userDeck[2],userDeck[3]],bet:userBet}];
+		this.dealCards = [this.userDeck[0],this.userDeck[1]];
+		this.userHand = [{cards:[this.userDeck[2],this.userDeck[3]],bet:userBet}];
 		this.uBet = userBet;
 		this.currentIndex = 4;
 		this.currentHand = 0;
@@ -230,6 +233,7 @@ class userHand {
 	}
 	
 	getHand(handIndex) {
+		if (handIndex == null) { handIndex = this.currentHand ; }
 		return (this.userHand[handIndex]);
 	}
 	checkHand() {
@@ -248,7 +252,7 @@ class userHand {
 
 
 	drawCard() {
-		let res = userDeck[this.currentIndex];
+		let res = this.userDeck[this.currentIndex];
 		this.currentIndex++;
 		return res;
 	}
@@ -301,6 +305,41 @@ class userHand {
 		this.userHand[this.currentHand].cards[1] = this.drawCard();
 	}
 		
+}
+
+class userEnd {
+
+
+	async display(interaction) {
+		let message = 'Hello, ' + getM(interaction.user.id) + 'this is your current hand: \n';
+		let disHand = this.userPlay.getHand();
+		for (let i of disHand.cards) {
+			message = message + cardName[i.val-1] + suitSym[i.suit];
+		}
+		await interaction.followUp(message);
+	}
+
+	constructor(interaction,userBet) {
+		if (userBet == null) {
+			interaction.options.getInteger('bet');
+		}
+		this.userBalence = getUserCash(interaction.user.id,interaction.guildId);
+		warnUser(interaction, this.conPartTwo.bind(this),userBet,"deal");
+
+	}
+	async conPartTwo(interaction,userBet) {
+		this.userPlay = new userHand(userBet);
+		await this.display(interaction);
+	}
+
+
+
+
+
+
+
+
+
 }
 //((this.userHand[this.currentHand]).cards[0])
 botCommands.set('cset', (
@@ -361,6 +400,7 @@ async function warnUser(interaction, /*async function(interaction)*/ callFunc, u
 		await interaction.reply({content: 'Hello, ' + getM(gUserInfo[0]) + ', but it appears that you are attempting to wager $' + userBet + ' however, you only have $' + amountOfCash + ', and it is generally a good rule of thumb to not bet more than 10x your savings at once. Are you sure you want to continue with this ' + actBio + '?', components: [row] });
 		return 0;
 	} else {
+		await interaction.deferReply();
 		callFunc(interaction);
 		return 1;
 	}
@@ -390,7 +430,8 @@ botCommands.set('playblackjack', (
 		let userBet = interaction.options.getInteger('bet');
 		let gUserInfo = [interaction.user.id,interaction.guildId];
 		let amountOfCash = await getUserCash(gUserInfo[0],gUserInfo[1]);
-		await warnUser(interaction, playHand, userBet);
+		let frontEnd = await new userEnd(interaction,userBet);
+		//await warnUser(interaction, playHand, userBet);
 	
 	}
 
