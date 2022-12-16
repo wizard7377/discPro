@@ -29,7 +29,7 @@ TABLE uPref IS SET UP
 
 
 
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const config = require('./config.json');
 const fs = require('fs');
@@ -40,7 +40,40 @@ client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 });
 
+function shuffle(array) {
+	for (let i = array.length - 1; i > 0; i--) {
+	  const j = Math.floor(Math.random() * (i + 1));
+	  [array[i], array[j]] = [array[j], array[i]];
+	}
+	return array;
+}
+  
+function sumHand(array) {
+	let total = [0];
+	for (let card of array) {
+		if (card.val==1) {
+			for (let i of total) {
+				i++;
+			}
+			total.push(total[total.length-1]+10);
+		} else if (card.val > 10) {
+			for (let i of total) {
+				i += 10;
+			}
+		} else {
+			for (let i of total) {
+				i += card.val;
+			}
+		}
+	}
+	return total;
+		
+}
 
+
+function getM(uId) {
+	return ('<@'+uId+'>');
+}
 
 
 
@@ -169,10 +202,78 @@ process.on('exit',function() {
 
 });
 
+const fullDeck = (function() {
+	const retVal = [];
+	for (let i = 1; i <= 13; i++) {
+		for (let ii = 0; ii < 4; ii++) {
+			retVal.push({val:i,suit:ii});
+		}
+	}
+	return retVal;
+})();
 
 const botCommands = new Map();
+const commandQ = new Map();
+const userPlays = new Map();
 
 
+class userHand {
+	constructor(userBet) {
+		this.userDeck = shuffle(fullDeck);
+		this.dealCards = [userDeck[0],userDeck[1]];
+		this.userHand = [{cards:[userDeck[2],userDeck[3]],bet:userBet}];
+		this.currentIndex = 4;
+		this.currentHand = 0;
+	}
+	pushHand() {
+		this.userHand[currentHand].cards.push(this.userDeck[this.currentIndex]);
+		this.currentIndex++;
+		if (sumHand(this.userHand[this.currentHand].cards) >= 21) {
+			this.currentHand++;
+			return 0;
+		}
+		if (this.currentHand >= this.userHand.length) {
+			//work needed
+		}
+
+	}
+
+	stayHand() {
+		this.currentHand++;
+	}
+
+	surrenderHand() {
+		this.userHand[this.currentHand].bet = 0;
+		this.currentHand++;
+	}
+
+	doubleDown() {
+		this.userHand[this.currentHand].bet *= 2;
+		if (this.pushHand() != 0) { this.stayHand() ; }
+	}
+	newHand(startCard,userBet) {
+		if (startCard == null) {
+			startCard = (this.userDeck[this.currentIndex])
+			this.currentIndex++;
+		}
+		if (userBet == null) {
+			userBet = this.userHand[this.currentHand].bet;
+		}
+		this.userHand.push({cards: 
+			[
+				(startCard),
+				(this.userDeck[this.currentIndex])
+			],
+			bet:(userBet)
+		});
+		this.currentIndex++;
+	}
+
+	
+		
+
+}
+//((this.userHand[this.currentHand]).cards[0])
 botCommands.set('cset', (
 	async function(interaction) {
 		let cVal = interaction.options.getInteger('dcash');
@@ -198,7 +299,7 @@ botCommands.set('uset', (
 		let args = [interaction.options.getUser('uname'),interaction.guildId,interaction.options.getInteger('acash')];
 		await setUserCash(args[0].id,args[1],args[2]);
 		client.users.send(args[0].id,
-			'Hello, ' + args[0].username + ', your cash has been set to $' + args[2] + " in guild " + interaction.guild.name);
+			'Hello, ' + getM(args[0].id) + ', your cash has been set to $' + args[2] + " in guild " + interaction.guild.name);
 		await interaction.reply('set cash');
 
 
@@ -206,23 +307,91 @@ botCommands.set('uset', (
 
 	}
 ));
+async function warnUser(interaction, /*async function(interaction)*/ callFunc, userBet, actBio = "action") {
+	if (userBet == null) { let userBet = interaction.options.getInteger('bet'); }
+	let gUserInfo = [interaction.user.id,interaction.guildId];
+	
+	let amountOfCash = await getUserCash(gUserInfo[0],gUserInfo[1]);
+	if (userBet > amountOfCash) {
+		await interaction.reply('I\'m so sorry, ' + getM(gUserInfo[0]) + ', but it appears you only have $' + amountOfCash + ', while you need $' + userBet + 'to perform this ' + actBio);
+		return -1;
+	} else if (userBet*10>=amountOfCash) {
+		const row = new ActionRowBuilder()
+			.addComponents(
+				new ButtonBuilder()
+					.setCustomId('1'+gUserInfo[0]+gUserInfo[1])
+					.setLabel('Yes?')
+					.setStyle(ButtonStyle.Success),
+				new ButtonBuilder()
+					.setCustomId('2'+gUserInfo[0]+gUserInfo[1])
+					.setLabel('No!')
+					.setStyle(ButtonStyle.Danger),
+
+			);
+		commandQ.set(('1'+gUserInfo[0]+gUserInfo[1]), callFunc);
+		await interaction.reply({content: 'Hello, ' + getM(gUserInfo[0]) + ', but it appears that you are attempting to wager $' + userBet + ' however, you only have $' + amountOfCash + ', and it is generally a good rule of thumb to not bet more than 10x your savings at once. Are you sure you want to continue with this ' + actBio + '?', components: [row] });
+		return 0;
+	} else {
+		callFunc(interaction);
+		return 1;
+	}
+
+
+	
+
+		
+
+
+
+}
+
+async function playHand(interaction) {
+
+
+	//Start here tommorow
+	if (interaction.isButton()) {
+		await (interaction.message.edit({components:[]}));
+
+	}
+
+}
+
+botCommands.set('playblackjack', (
+	async function(interaction) {
+		let userBet = interaction.options.getInteger('bet');
+		let gUserInfo = [interaction.user.id,interaction.guildId];
+		let amountOfCash = await getUserCash(gUserInfo[0],gUserInfo[1]);
+		await warnUser(interaction, playHand, userBet);
+	
+	}
+
+	));
 
 
 
 
 client.on('interactionCreate', async interaction => {
-	if (!(interaction.isChatInputCommand())) {	
-		return;
+	if (!(interaction.isButton())) {
+
+		if (!(interaction.isChatInputCommand())) {	
+			return;
+		} else if (botCommands.has(interaction.commandName)) {
+			try {
+				(botCommands.get(interaction.commandName))(interaction);
+			} catch (err) {
+				interaction.reply('An error has occured');
+			}
+
+			return;
+		} 
+	} else if (commandQ.has(interaction.customId)) {
+		try {
+			await ((commandQ.get(interaction.customId))(interaction));
+			(commandQ.delete(interaction.customId));
+		} catch (err) {
+			console.error(err);
+		}
 	}
-
-	if (!(botCommands.has(interaction.commandName))) { return; }
-
-	try {
-		(botCommands.get(interaction.commandName))(interaction);
-	} catch (err) {
-		interaction.reply('An error has occured');
-	}
-
 	return;
 });
 

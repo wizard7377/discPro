@@ -28,7 +28,16 @@ const commands = [
 	(new SlashCommandBuilder()
 		.setName('viewbalance')
 		.setDescription('view the amount of cash you have')
+	),
+	(new SlashCommandBuilder()
+		.setName('playblackjack')
+		.setDescription('Play a game of blackjack with your server balence')
+		.addIntegerOption(option =>
+			option.setName('bet')
+				.setDescription('The amount you wish to bet on this deal')
+				.setRequired(true))
 	)
+	
 
 ];
 
