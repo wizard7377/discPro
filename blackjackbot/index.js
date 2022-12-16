@@ -222,13 +222,40 @@ class userHand {
 		this.userDeck = shuffle(fullDeck);
 		this.dealCards = [userDeck[0],userDeck[1]];
 		this.userHand = [{cards:[userDeck[2],userDeck[3]],bet:userBet}];
+		this.uBet = userBet;
 		this.currentIndex = 4;
 		this.currentHand = 0;
+		this.isFirst = true;
+		this.canSplit = false;
+	}
+	
+	getHand(handIndex) {
+		return (this.userHand[handIndex]);
+	}
+	checkHand() {
+		if (this.currentHand >= this.userHand.length) { return -1 ; }
+		if ((sumHand(this.getHand(this.currentHand)))[0] > 21) {
+			this.surrenderHand();
+		} else if ((sumHand(this.getHand(this.currentHand)))[0] == 21) {
+			if (this.isFirst) {
+				this.userHand[this.currentHand].bet=Math.ceil(this.userHand[this.currentHand].bet * 1.5);
+			}
+			this.stayHand()
+		} else if (((this.getHand(this.currentHand).cards[0]) == (this.getHand(this.currentHand).cards[1])) && (this.getHand(this.currentHand).cards.length == 2)) { this.canSplit = true };
+	}
+
+			
+
+
+	drawCard() {
+		let res = userDeck[this.currentIndex];
+		this.currentIndex++;
+		return res;
 	}
 	pushHand() {
 		this.userHand[currentHand].cards.push(this.userDeck[this.currentIndex]);
 		this.currentIndex++;
-		if (sumHand(this.userHand[this.currentHand].cards) >= 21) {
+		if (sumHand(this.getHand(this.currentHand).cards) >= 21) {
 			this.currentHand++;
 			return 0;
 		}
@@ -245,6 +272,7 @@ class userHand {
 	surrenderHand() {
 		this.userHand[this.currentHand].bet = 0;
 		this.currentHand++;
+
 	}
 
 	doubleDown() {
@@ -257,7 +285,7 @@ class userHand {
 			this.currentIndex++;
 		}
 		if (userBet == null) {
-			userBet = this.userHand[this.currentHand].bet;
+			userBet = this.uBet;
 		}
 		this.userHand.push({cards: 
 			[
@@ -268,10 +296,11 @@ class userHand {
 		});
 		this.currentIndex++;
 	}
-
-	
+	splitHand() {
+		this.newHand(this.userHand[this.currentHand].cards[0],this.uBet);
+		this.userHand[this.currentHand].cards[1] = this.drawCard();
+	}
 		
-
 }
 //((this.userHand[this.currentHand]).cards[0])
 botCommands.set('cset', (
