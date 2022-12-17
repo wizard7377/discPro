@@ -51,6 +51,9 @@ function shuffle(array) {
 const cardName = ['A','2','3','4','5','6','7','8','9','T','J','Q','K'];
 const suitSym = ['♠️','♣️','♥️','♦️'];
 const cardBack = '🃏';
+
+
+function showCard(card) {
 function sumHand(array) {
 	let total = [0];
 	for (let card of array) {
@@ -313,21 +316,84 @@ class userEnd {
 	async display(interaction) {
 		let message = 'Hello, ' + getM(interaction.user.id) + 'this is your current hand: \n';
 		let disHand = this.userPlay.getHand();
+		let gUserInfo = [interaction.user.id,interaction.guildId];
 		for (let i of disHand.cards) {
 			message = message + cardName[i.val-1] + suitSym[i.suit];
 		}
-		await interaction.followUp(message);
+		message = message + '\n' + 'And the dealer has: \n' + cardBack;
+		let row;
+		row = new ActionRowBuilder()
+			.addComponents(
+				new ButtonBuilder()
+					.setCustomId('3'+gUserInfo[0]+gUserInfo[1])
+					.setLabel('Push!')
+					.setStyle(ButtonStyle.Success),
+				new ButtonBuilder()
+					.setCustomId('4'+gUserInfo[0]+gUserInfo[1])
+					.setLabel('Stay!')
+					.setStyle(ButtonStyle.Secondary),
+				new ButtonBuilder()
+					.setCustomId('5'+gUserInfo[0]+gUserInfo[1])
+					.setLabel('Surrender!')
+					.setStyle(ButtonStyle.Danger),
+				((function (obj) {
+					if ((obj.userPlay.canSplit) && (obj.userBalence>=obj.uBet)) {
+						return new ButtonBuilder()
+							.setCustomId('6'+gUserInfo[0]+gUserInfo[1])
+							.setLabel('Split!')
+							.setStyle(ButtonStyle.Primary)
+					} else {
+						return new ButtonBuilder()
+							.setCustomId('6'+gUserInfo[0]+gUserInfo[1])
+							.setLabel('Split!')
+							.setStyle(ButtonStyle.Primary)
+							.setDisabled(true)
+					}
+				})(this)),
+				((function (obj) {
+					if ((obj.userPlay.isFirst) && (obj.userBalence>=obj.uBet)) {
+						return new ButtonBuilder()
+							.setCustomId('7'+gUserInfo[0]+gUserInfo[1])
+							.setLabel('Double down!')
+							.setStyle(ButtonStyle.Danger)
+					} else {
+						return new ButtonBuilder()
+							.setCustomId('7'+gUserInfo[0]+gUserInfo[1])
+							.setLabel('Double down!')
+							.setStyle(ButtonStyle.Danger)
+							.setDisabled(true)
+					}
+				})(this)),
+			);
+
+					
+
+
+		
+
+
+
+
+
+
+		let finMsg = {content:message,components:[row]};
+		if (interaction.replied) {
+			await interaction.followUp(finMsg);
+		} else { 
+			await interaction.reply(finMsg);
+		}
 	}
 
 	constructor(interaction,userBet) {
 		if (userBet == null) {
 			interaction.options.getInteger('bet');
 		}
-		this.userBalence = getUserCash(interaction.user.id,interaction.guildId);
+		this.uBet = userBet;
 		warnUser(interaction, this.conPartTwo.bind(this),userBet,"deal");
 
 	}
 	async conPartTwo(interaction,userBet) {
+		this.userBalence = await getUserCash(interaction.user.id,interaction.guildId);
 		this.userPlay = new userHand(userBet);
 		await this.display(interaction);
 	}
@@ -400,8 +466,7 @@ async function warnUser(interaction, /*async function(interaction)*/ callFunc, u
 		await interaction.reply({content: 'Hello, ' + getM(gUserInfo[0]) + ', but it appears that you are attempting to wager $' + userBet + ' however, you only have $' + amountOfCash + ', and it is generally a good rule of thumb to not bet more than 10x your savings at once. Are you sure you want to continue with this ' + actBio + '?', components: [row] });
 		return 0;
 	} else {
-		await interaction.deferReply();
-		callFunc(interaction);
+		await callFunc(interaction);
 		return 1;
 	}
 
